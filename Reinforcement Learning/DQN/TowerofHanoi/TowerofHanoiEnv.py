@@ -1,6 +1,7 @@
 import gymnasium
 import numpy as np
 import itertools
+import tensorflow as tf
 
 
 
@@ -74,3 +75,29 @@ class TowerOfHanoiEnv(gymnasium.Env):
         return np.where(self.state ==0, np.inf, self.state)
     
 
+
+
+class FlattenEnv(gymnasium.ObservationWrapper):
+    def __init__(self, env):
+        super().__init__(env)
+        self.observation_space = gymnasium.spaces.Box(shape=(30,), low=-np.inf, high=np.inf)
+            
+    # Override `observation` to custom process the original observation
+    # coming from the env.
+    def observation(self, observation):
+        return observation.flatten()
+
+
+
+
+class EmbeddingEnv(gymnasium.ObservationWrapper):
+# Override `observation` to custom process the original observation
+# coming from the env.
+    def __init__(self, env):
+         super().__init__(env)
+         self.observation_space = gymnasium.spaces.Box(shape=(16,), low=-np.inf, high=np.inf)
+    def observation(self, observation):
+        model = tf.keras.models.load_model('autoencoder')
+        #model = AutoEncoder()
+        #model.load_weights('./checkpoints/my_checkpoint')
+        return model.encoder(observation)
