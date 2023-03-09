@@ -1,16 +1,16 @@
-import gym
+import gymnasium
 import numpy as np
 import itertools
 
 
 
-class TowerOfHanoiEnv(gym.Env):
+class TowerOfHanoiEnv(gymnasium.Env):
     def __init__(self,config) -> None:
         super(TowerOfHanoiEnv).__init__()
         self.num_towers=3
         self.num_disks = config["num_disks"]
-        self.action_space = gym.spaces.Discrete(6)
-        self.observation_space = gym.spaces.MultiDiscrete([[self.num_disks+1]*self.num_disks]*self.num_towers)
+        self.action_space = gymnasium.spaces.Discrete(6)
+        self.observation_space = gymnasium.spaces.MultiDiscrete([[self.num_disks+1]*self.num_disks]*self.num_towers)
         self.position =list(itertools.permutations(list(range(self.num_towers)), 2))
     
     def reset(self,seed=None, options=None):
@@ -25,7 +25,7 @@ class TowerOfHanoiEnv(gym.Env):
         # Reverse the order of the disks in source tower
         self.state[0, -self.num_disks:] = self.state[0, :self.num_disks][::-1]
         self.state[0, :] = self.state[0] +1
-        return self.state
+        return self.state, {}
     
     def step(self, action):
         """Run one time-step of the environment's dynamics. When end of
@@ -42,7 +42,7 @@ class TowerOfHanoiEnv(gym.Env):
             truncated (bool): whether the episode was truncated
             info (dict): contains auxiliary diagnostic information (helpful for debugging, and sometimes learning)
         """
-    
+        truncated = None
         action_idx = self.position[action]
         from_tower, to_tower = action_idx[0], action_idx[1]
         preprocessed_state = self.preprocess()
@@ -51,7 +51,7 @@ class TowerOfHanoiEnv(gym.Env):
     
         if condition or min(preprocessed_state[from_tower]) == min(preprocessed_state[to_tower]) :
             # Invalid move
-            return self.state, float(-0.5), False, {}
+            return self.state, float(-0.5), False,False, {}
     
         # Valid move
         disk = min(preprocessed_state[from_tower])
@@ -66,9 +66,9 @@ class TowerOfHanoiEnv(gym.Env):
         # Check if we are at the terminal state
         # A reward of -1 is given for every valid move
         if np.all(self.state[2] != 0):
-            return  self.state,float(-1), True,{}
+            return  self.state,float(-1), True,True,{}
     
-        return self.state, float(-1), False, {}
+        return self.state, float(-1), False, False,{}
     
     def preprocess(self):
         return np.where(self.state ==0, np.inf, self.state)
