@@ -18,10 +18,9 @@ class HanoiTower(gymnasium.Env):
         self.max_n_steps = config['max_n_steps']
 
         self.action_space = spaces.MultiDiscrete([3, 3])
-        self.observation_space = spaces.MultiDiscrete([[self.n_disks + 1] 
-                                                       * self.n_disks] 
-                                                        * self.n_towers)
-
+        self.observation_space = spaces.Box(low=0, high=self.n_disks, 
+                                            shape=(self.n_towers, self.n_disks), 
+                                            dtype=np.int32)
         self._create_towers()
 
     def _create_towers(self):
@@ -43,7 +42,7 @@ class HanoiTower(gymnasium.Env):
     def reset(self, seed=None, options=None):
         self._steps_count = 0
         self._create_towers()
-        return self._extract_state()
+        return self._extract_state(), {}
     
     def _validate_action(self, from_idx, to_idx):
         if from_idx == to_idx:
@@ -64,10 +63,10 @@ class HanoiTower(gymnasium.Env):
         from_idx, to_idx = action
 
         self._steps_count += 1
-        done = (self._steps_count >= self.max_n_steps)
+        terminated = (self._steps_count >= self.max_n_steps)
         if not self._validate_action(from_idx, to_idx):
             msg = 'Invalid action'
-            return self._extract_state(), -1, done, {'log': msg}
+            return self._extract_state(), -1.0, False, terminated, {'log': msg}
         
         from_tower = self._towers[from_idx]
         to_tower = self._towers[to_idx]
@@ -76,8 +75,12 @@ class HanoiTower(gymnasium.Env):
         disk = from_tower.popleft()
         to_tower.appendleft(disk)
         
-        if len(self._towers[Towers.DESTINATION.value]) == self.n_disks:
-            done = True
-        
-        return self._extract_state(), -1, done, {}
+        done = len(self._towers[Towers.DESTINATION.value]) == self.n_disks        
+        return self._extract_state(), -1.0, done, terminated, {}
     
+
+class PreprocessorEnv(gymnasium.ObservationWrapper):
+    def observation(self, obs):
+        obs = obs / obs.max()
+        return obs
+
