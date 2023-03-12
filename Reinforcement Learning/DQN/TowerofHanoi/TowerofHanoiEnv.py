@@ -2,15 +2,18 @@ import gymnasium
 import numpy as np
 import itertools
 import tensorflow as tf
+from ray.rllib.utils.numpy import one_hot
+from utils import encoder
 
 
 
 class TowerOfHanoiEnv(gymnasium.Env):
     def __init__(self,config) -> None:
-        super(TowerOfHanoiEnv).__init__()
+        super().__init__()
         self.num_towers=3
         self.num_disks = config["num_disks"]
         self.action_space = gymnasium.spaces.Discrete(6)
+        #self.observation_space = gymnasium.spaces.Box(low=0, high=self.num_disks, shape=(self.num_towers,self.num_disks), dtype=np.int32)
         self.observation_space = gymnasium.spaces.MultiDiscrete([[self.num_disks+1]*self.num_disks]*self.num_towers)
         self.position =list(itertools.permutations(list(range(self.num_towers)), 2))
     
@@ -91,13 +94,12 @@ class FlattenEnv(gymnasium.ObservationWrapper):
 
 
 class EmbeddingEnv(gymnasium.ObservationWrapper):
-# Override `observation` to custom process the original observation
-# coming from the env.
+
     def __init__(self, env):
          super().__init__(env)
          self.observation_space = gymnasium.spaces.Box(shape=(16,), low=-np.inf, high=np.inf)
     def observation(self, observation):
-        model = tf.keras.models.load_model('autoencoder')
-        #model = AutoEncoder()
-        #model.load_weights('./checkpoints/my_checkpoint')
-        return model.encoder(observation)
+        preprocess = one_hot(observation)
+        preprocess = preprocess.reshape(-1, 330)
+        output = encoder(preprocess, weights)
+        return output.reshape(-1,)
