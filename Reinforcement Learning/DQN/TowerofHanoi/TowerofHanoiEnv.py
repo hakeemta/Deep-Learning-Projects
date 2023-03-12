@@ -94,7 +94,6 @@ class FlattenEnv(gymnasium.ObservationWrapper):
 
 
 class EmbeddingEnv(gymnasium.ObservationWrapper):
-
     def __init__(self, env):
          super().__init__(env)
          self.observation_space = gymnasium.spaces.Box(shape=(16,), low=-np.inf, high=np.inf)
