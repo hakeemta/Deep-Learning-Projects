@@ -1,7 +1,8 @@
+import tensorflow as tf
+from tensorflow.keras import layers, models
+
 from ray.rllib.models.tf.tf_modelv2 import TFModelV2
 from ray.rllib.models import ModelCatalog
-
-from tensorflow.keras import layers, models
 
 from ray.rllib.utils.framework import try_import_tf
 tf1, tf, tfv = try_import_tf()
@@ -20,14 +21,17 @@ class AutoregressiveModel(TFModelV2):
         # Inputs
         obs_input = layers.Input(shape=obs_space.shape, name='obs_input')
         flattened = layers.Flatten() (obs_input)
-        context = layers.Dense(n_hiddens, name='context',
-                                        activation='relu')(flattened)
+        
+        context = layers.Dense(n_hiddens, name='context1',
+                               activation='relu')(flattened)
+        context = layers.Dense(n_hiddens, name='context2',
+                               activation='relu')(context)
         
         # V(s)
         value_out = layers.Dense(1, name='value_out')(context)
 
         # Base layers
-        self.base_model = tf.keras.Model(obs_input, [context, value_out],
+        self.base_model = models.Model(obs_input, [context, value_out],
                                          name='base_model')
         self.base_model.summary()
 
@@ -36,7 +40,7 @@ class AutoregressiveModel(TFModelV2):
 
         # P(a1 | obs)
         from_logits = layers.Dense(n_towers, name='from_logits')(ctx_input)
-        self.from_model = tf.keras.Model(ctx_input, from_logits, 
+        self.from_model = models.Model(ctx_input, from_logits, 
                                          name='from_model')
         self.from_model.summary()
 
@@ -46,7 +50,7 @@ class AutoregressiveModel(TFModelV2):
         to_hidden = layers.Dense(n_hiddens, name='to_hidden',
                                           activation='relu')(from_input)
         to_logits = layers.Dense(n_towers, name='to_logits')(to_hidden)
-        self.to_model = tf.keras.Model(from_input, to_logits,
+        self.to_model = models.Model(from_input, to_logits,
                                        name='to_model')
         self.to_model.summary()
 

@@ -21,7 +21,7 @@ class AutoregDistribution(ActionDistribution):
         self._action_logp = from_dist.logp(_from) + to_dist.logp(to)
 
         # Return the action tuple.
-        return (_from, to)
+        return tf.stack([_from, to], axis=1)
 
     def sample(self):
         # First, sample _from.
@@ -34,7 +34,7 @@ class AutoregDistribution(ActionDistribution):
         self._action_logp = from_dist.logp(_from) + to_dist.logp(to)
 
         # Return the action tuple.
-        return (_from, to)
+        return tf.stack([_from, to], axis=1)
 
     def logp(self, actions):
         _from, to = actions[:, 0], actions[:, 1]

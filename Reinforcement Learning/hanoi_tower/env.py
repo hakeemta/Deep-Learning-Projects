@@ -84,3 +84,7 @@ class PreprocessorEnv(gymnasium.ObservationWrapper):
         obs = obs / obs.max()
         return obs
 
+def create_env(config):
+    _env = HanoiTower(config)
+    _env = PreprocessorEnv(_env)
+    return _env
