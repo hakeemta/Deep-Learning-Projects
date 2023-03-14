@@ -11,8 +11,8 @@ class AutoregDistribution(ActionDistribution):
     """Action distribution P(_from, to) = P(_from) * P(to | _from)"""
 
     def __init__(self, inputs, model):
-        inputs, mask = tf.split(inputs, [-1, 3], axis=-1)
-        self.mask = mask
+        inputs, mask = tf.split(inputs, [-1, 1], axis=-1)
+        self.mask = tf.cast(mask, dtype=tf.bool)
 
         super().__init__(inputs, model)
 
@@ -63,31 +63,20 @@ class AutoregDistribution(ActionDistribution):
         return from_terms + to_terms
 
     def _from_distribution(self):
-        # from_logits = self.model.from_model(self.inputs)
-        from_logits, _ = tf.split(self.inputs, 2, axis=-1)
-        
         # Mask empty towers
-        mask = tf.cast(self.mask, dtype=tf.bool)
-        mask = tf.logical_not(mask) # Inverse the masking
-
-        from_logits -= (1.e9 * tf.cast(mask, dtype=tf.float32)) 
-        
+        from_logits = self.model.select(self.inputs, self.mask)
+        print('heyyyyy', self.mask)
+        from_logits = tf.squeeze(from_logits, axis=1)
         from_dist = Categorical(from_logits)
         return from_dist
 
     def _to_distribution(self, _from):
-        # from_encoded = tf.one_hot(_from, 3, 
-        #                           on_value=1, off_value=0) 
-        # to_logits = self.model.to_model(self.inputs)
-        _, to_logits = tf.split(self.inputs, 2, axis=-1)
-        
         # Mask from logits in to_logits
         mask = tf.one_hot(_from, 3,
-                          on_value=1, off_value=0, 
-                          dtype=tf.float64)
-        to_logits -=  (1.e9 * tf.cast(mask, 
-                                      dtype=tf.float32))
-
+                          on_value=0, off_value=1)
+        mask = tf.cast(mask, dtype=tf.bool)
+        to_logits = self.model.select(self.inputs, mask)
+        to_logits = tf.squeeze(to_logits, axis=1)
         to_dist = Categorical(to_logits)
         return to_dist
 
