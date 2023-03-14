@@ -21,42 +21,55 @@ class AutoregressiveModel(TFModelV2):
         # Inputs
         obs_input = layers.Input(shape=obs_space.shape, name='obs_input')
         flattened = layers.Flatten() (obs_input)
-        
+
         context = layers.Dense(n_hiddens, name='context1',
                                activation='relu')(flattened)
         context = layers.Dense(n_hiddens, name='context2',
                                activation='relu')(context)
         
+        logits = layers.Dense(2 * n_towers, name='logits') (context)
+                
         # V(s)
-        value_out = layers.Dense(1, name='value_out')(context)
+        context_v = layers.Dense(n_hiddens, name='context1_v',
+                               activation='relu')(flattened)
+        context_v = layers.Dense(n_hiddens, name='context2_v',
+                               activation='relu')(context_v)
+        value_out = layers.Dense(1, name='value_out')(context_v)
 
         # Base layers
-        self.base_model = models.Model(obs_input, [context, value_out],
-                                         name='base_model')
+        self.base_model = models.Model(obs_input, [logits, value_out],
+                                       name='base_model')
         self.base_model.summary()
 
         # Autoregressive action sampler
-        ctx_input = layers.Input(shape=(num_outputs,), name='ctx_input')
+        # ctx_input = layers.Input(shape=(n_hiddens, ), name='ctx_input')
 
         # P(a1 | obs)
-        from_logits = layers.Dense(n_towers, name='from_logits')(ctx_input)
-        self.from_model = models.Model(ctx_input, from_logits, 
-                                         name='from_model')
-        self.from_model.summary()
+        # from_logits = layers.Dense(n_towers, name='from_logits')(ctx_input)
+        # self.from_model = models.Model(ctx_input, from_logits, 
+        #                                  name='from_model')
+        # self.from_model.summary()
 
         # P(a2 | a1)
-        # --note: typically you'd want to implement P(a2 | a1, obs) as follows:
-        from_input = layers.Input(shape=(n_towers, ), name='from_input')
-        to_hidden = layers.Dense(n_hiddens, name='to_hidden',
-                                          activation='relu')(from_input)
-        to_logits = layers.Dense(n_towers, name='to_logits')(to_hidden)
-        self.to_model = models.Model(from_input, to_logits,
-                                       name='to_model')
-        self.to_model.summary()
+        # from_input = layers.Input(shape=(n_towers, ), name='from_input')
+        # from_embedding = layers.Dense(n_hiddens, name='from_embedding',
+        #                               activation='relu')(from_input)
+        # combined = tf.keras.layers.Concatenate(axis=1) ([ctx_aggr, from_embedding])
+        
+        # to_logits = layers.Dense(n_towers, name='to_logits')(ctx_input)
+        # self.to_model = models.Model(ctx_input, to_logits,
+        #                              name='to_model')
+        # self.to_model.summary()
 
     def forward(self, input_dict, state, seq_lens):
-        context, self._value_out = self.base_model(input_dict['obs'])
-        return context, state
+        obs = input_dict['obs']
+        logits, self._value_out = self.base_model(obs)
+
+        mask = tf.reduce_any(obs > 0, axis=-1)
+        mask = tf.cast(mask, dtype=logits.dtype)
+        
+        packed = tf.concat([logits, mask], axis=-1)
+        return packed, state
 
     def value_function(self):
         return tf.reshape(self._value_out, [-1])

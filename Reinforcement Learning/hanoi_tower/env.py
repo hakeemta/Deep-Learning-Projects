@@ -86,5 +86,5 @@ class PreprocessorEnv(gymnasium.ObservationWrapper):
 
 def create_env(config):
     _env = HanoiTower(config)
-    _env = PreprocessorEnv(_env)
+    #_env = PreprocessorEnv(_env)
     return _env
